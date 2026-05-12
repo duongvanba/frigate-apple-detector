@@ -1,5 +1,10 @@
 venv/*
 models/*
+yolo/venv/
+yolo/*.pt
 pyvenv.cfg
 __pycache__
 macos/FrigateDetector.app
+.build/
+detector-runner.spec
+release/

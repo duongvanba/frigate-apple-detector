@@ -1,143 +1,94 @@
-# Apple Silicon Detector for Frigate
+# Frigate Apple Silicon Detector
 
-An optimized object detection client for Frigate that leverages Apple Silicon's Neural Engine for high-performance inference using ONNX Runtime. Provides seamless integration with Frigate's ZMQ detector plugin.
+Ứng dụng macOS native để chạy detector ONNX cho Frigate trên Apple Silicon. App được đóng gói sẵn runtime, thư viện Python cần thiết và model `yolov8n.onnx`, nên người dùng tải về không cần cài Python, venv hay dependencies của repo.
 
-## Features
+## Sử dụng app macOS
 
-- **ZMQ IPC Communication**: Implements the REQ/REP protocol over IPC endpoints
-- **ONNX Runtime Integration**: Runs inference using ONNX models with optimized execution providers
-- **Apple Silicon Optimized**: Defaults to CoreML execution provider for optimal performance on Apple Silicon
-- **Error Handling**: Robust error handling with fallback to zero results
-- **Flexible Configuration**: Configurable endpoints, model paths, and execution providers
+1. Tải file `FrigateDetector.app.zip` trong mục GitHub Releases.
+2. Giải nén file zip.
+3. Mở `FrigateDetector.app`.
+   - Nếu macOS chặn lần đầu, bấm chuột phải vào app rồi chọn `Open`.
+4. Trong app:
+   - `Model`: mặc định dùng model `yolov8n.onnx` được đóng gói sẵn trong app.
+   - `Host`: dùng `*` để cho phép Frigate kết nối từ máy/container khác.
+   - `Port`: mặc định `5555`.
+   - Bấm `Bắt đầu`.
+5. Chờ khoảng 1 phút để runtime và model khởi động hoàn toàn.
+6. Cấu hình Frigate trỏ tới endpoint TCP của máy Mac, ví dụ:
 
-## Quick Start
+```yaml
+detectors:
+  apple_silicon:
+    type: zmq
+    endpoint: tcp://192.168.2.2:5555
+```
 
-### Option A: macOS App (no terminal required)
-1. Download the latest `FrigateDetector.app.zip` from the Releases page.
-2. Unzip it and open `FrigateDetector.app` (first run: right‑click → Open to bypass Gatekeeper).
-3. A Terminal window will appear and automatically:
-   - create a local `venv/`
-   - install dependencies
-   - start the detector with `--model AUTO`
+Thay `192.168.2.2` bằng IP LAN của máy Mac đang chạy app.
 
-### Option B: Makefile
+## App lưu dữ liệu ở đâu?
+
+App không ghi vào thư mục hệ thống Python hay venv của máy host. Dữ liệu runtime được lưu tại:
+
+```text
+~/Library/Application Support/FrigateDetector
+```
+
+Log cũng được stream trực tiếp trong app và ghi ra:
+
+```text
+~/Library/Application Support/FrigateDetector/Logs/FrigateDetector.log
+```
+
+## Build app từ source
+
+Yêu cầu trên máy build:
+
+- macOS Apple Silicon
+- Xcode Command Line Tools
+- `uv` hoặc Python 3.11+
+
+Build app:
+
+```bash
+make app
+```
+
+App sau khi build nằm tại:
+
+```text
+macos/FrigateDetector.app
+```
+
+Tạo file zip để release:
+
+```bash
+cd macos
+ditto -c -k --sequesterRsrc --keepParent FrigateDetector.app FrigateDetector.app.zip
+```
+
+## Chạy detector bằng dòng lệnh
+
+Bạn vẫn có thể chạy detector trực tiếp bằng Makefile:
+
 ```bash
 make install
-make run
+make run MODEL=yolo/yolov8n.onnx ENDPOINT=tcp://*:5555
 ```
 
-The detector will automatically use the model in the Frigate communication and start communicating with Frigate. See [the Frigate documentation](https://deploy-preview-19787--frigate-docs.netlify.app/configuration/object_detectors#apple-silicon-detector) for instructions on setting up the detector.
+Hoặc dùng model do Frigate truyền sang:
 
-## What's Included
-
-- **Model Loading**: Uses whatever model Frigate configures via its automatic model loading
-- **Apple Silicon Optimization**: Uses CoreML execution provider for maximum performance
-- **Frigate Integration**: Drop-in replacement for Frigate's built-in detectors
-- **Multiple Model Support**: YOLOv9, RF-DETR, D-FINE, and custom ONNX models
-
-## Supported Models
-
-The following models are supported by this detector:
-
-| Apple Silicon Chip | YOLOv9      | RF-DETR         | D-FINE        |
-| -------------------| ----------- | --------------- | ------------- |
-| M1                 |             |                 |               |
-| M2                 |             |                 |               |
-| M3                 | 320-t: 8 ms | 320-Nano: 80 ms | 640-s: 120 ms |
-| M4                 |             |                 |               |
-
-### Model Configuration
-The detector uses the model that Frigate configures:
-1. Frigate automatically loads and configures the model via ZMQ
-2. The detector receives model information from Frigate's automatic model loading
-3. No manual model selection required - works with Frigate's existing model management
-
-For implementation details, see the [detector README](detector/README.md).
-
-## Virtual Environment Management
-
-- The Makefile automatically manages `venv/` and uses `venv/bin/python3` and `venv/bin/pip3` directly
-- If you prefer to activate manually (optional): `source venv/bin/activate`
-- Recreate the environment: `make reinstall` (removes `venv/` and reinstalls)
-- Verify installation: `venv/bin/python3 -c "import onnxruntime; print('ONNX Runtime version:', onnxruntime.__version__)"`
-
-## Advanced Configuration
-
-### Custom Model Selection
 ```bash
-make run MODEL=/path/to/your/model.onnx
+make run MODEL=AUTO ENDPOINT=tcp://*:5555
 ```
 
-### Custom Endpoints
-```bash
-make run MODEL=/path/to/your/model.onnx ENDPOINT="tcp://*:5555"
-```
+## Thành phần chính
 
-### Custom Execution Providers
-```bash
-make run MODEL=/path/to/your/model.onnx PROVIDERS="CoreMLExecutionProvider CPUExecutionProvider"
-```
+- `macos/App/Sources/FrigateDetectorApp.swift`: giao diện macOS native.
+- `detector/zmq_onnx_client.py`: ZMQ server nhận tensor từ Frigate và chạy ONNX Runtime.
+- `detector/model_util.py`: hậu xử lý output model.
+- `yolo/yolov8n.onnx`: model mặc định được bundle vào app release.
+- `macos/scripts/build_app.sh`: script build `.app`, đóng gói detector runtime bằng PyInstaller.
 
-### Verbose Logging
-```bash
-make run MODEL=/path/to/your/model.onnx VERBOSE=1
-```
+## Ghi chú release
 
-### Programmatic Usage
-
-```python
-from detector.zmq_onnx_client import ZmqOnnxClient
-
-# Create client instance
-client = ZmqOnnxClient(
-    endpoint="tcp://*:5555",
-    model_path="/path/to/your/model.onnx",
-    providers=["CoreMLExecutionProvider", "CPUExecutionProvider"]
-)
-
-# Start the server
-client.start_server()
-```
-
-## Error Handling
-
-The client includes comprehensive error handling:
-- **ZMQ Errors**: Automatic socket reset and error response
-- **ONNX Errors**: Fallback to zero results with error logging
-- **Decoding Errors**: Graceful handling of malformed requests
-- **Resource Cleanup**: Proper cleanup on shutdown
-
-## Performance
-
-- **CoreML Optimization**: Leverages Apple's Neural Engine when available
-- **Memory Management**: Efficient tensor handling with minimal copying
-- **Async Processing**: Non-blocking ZMQ communication
-- **Batch Processing**: Ready for future batch inference support
-
-## Troubleshooting
-
-### Common Issues
-- **Permission Denied**: Ensure the IPC endpoint directory has proper permissions (`/tmp/cache/`)
-- **Model Loading Failed**: Verify ONNX model files are in the `models/` directory
-- **ZMQ Bind Failed**: Ensure the endpoint is not already in use by another process
-- **Package Not Found**: Run `make reinstall` to recreate the virtual environment
-
-### Debug Mode
-Enable verbose logging for detailed operation information:
-```bash
-make run VERBOSE=1
-```
-
-## Integration with Frigate
-
-This detector works seamlessly with Frigate's ZMQ detector plugin:
-
-1. **Start the detector**: `make run`
-2. **Configure Frigate**: Add the ZMQ detector configuration (see Quick Start above)
-3. **Done**: Frigate automatically loads the model and the detector handles all inference requests
-
-For detailed implementation information, see the [detector documentation](detector/README.md).
-
-## License
-
-This project is provided as-is for integration with Frigate and ONNX Runtime inference.
+Build hiện tại được ad-hoc signed để chạy nội bộ. Nếu muốn phát hành public mượt hơn, nên ký bằng `Developer ID Application` và notarize bằng Apple Developer account trước khi upload GitHub Release.

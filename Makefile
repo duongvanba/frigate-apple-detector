@@ -1,15 +1,16 @@
 VENV := venv
-PYTHON := python3.11
+PYTHON := python3
 PIP := $(VENV)/bin/pip3
 PY := $(VENV)/bin/python3
 
-.PHONY: help venv install reinstall clean run
+.PHONY: help venv install reinstall clean run app
 
 help:
 	@echo "Targets:"
 	@echo "  venv       - Create local virtual environment in $(VENV)/"
 	@echo "  install    - Create venv (if needed) and install dependencies"
 	@echo "  run        - Run the ZMQ ONNX client"
+	@echo "  app        - Build the native macOS app bundle"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make install"
@@ -26,6 +27,9 @@ install: venv
 
 run: venv
 	$(PY) detector/zmq_onnx_client.py $(if $(MODEL),--model $(MODEL),) $(if $(ENDPOINT),--endpoint $(ENDPOINT),) $(if $(PROVIDERS),--providers $(PROVIDERS),) $(if $(VERBOSE),-v,)
+
+app:
+	macos/scripts/build_app.sh
 
 reinstall: clean install
 

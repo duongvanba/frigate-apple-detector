@@ -44,6 +44,7 @@ class ZmqOnnxClient:
         endpoint: str = "ipc:///tmp/cache/zmq_detector",
         model_path: Optional[str] = "AUTO",
         providers: Optional[List[str]] = None,
+        models_dir: Optional[str] = None,
     ):
         """
         Initialize the ZMQ ONNX client.
@@ -52,14 +53,16 @@ class ZmqOnnxClient:
             endpoint: ZMQ IPC endpoint to bind to
             model_path: Path to ONNX model file or "AUTO" for automatic model management
             providers: ONNX Runtime execution providers
-            session_options: ONNX Runtime session options
+            models_dir: Directory used for AUTO model transfers and provider caches
         """
         self.endpoint = endpoint
         self.model_path = model_path
         self.current_model = None
         self.model_ready = False
-        self.models_dir = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "models"
+        self.models_dir = (
+            models_dir
+            or os.environ.get("FRIGATE_DETECTOR_MODELS_DIR")
+            or os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
         )
 
         # Initialize ZMQ context and socket
@@ -732,8 +735,13 @@ def main():
     parser.add_argument(
         "--providers",
         nargs="+",
-        default=["CoreMLExecutionProvider"],
+        default=["CoreMLExecutionProvider", "CPUExecutionProvider"],
         help="ONNX Runtime execution providers",
+    )
+    parser.add_argument(
+        "--models-dir",
+        default=None,
+        help="Directory for AUTO model transfers and ONNX provider caches",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable verbose logging"
@@ -746,7 +754,10 @@ def main():
 
     # Create and start client
     client = ZmqOnnxClient(
-        endpoint=args.endpoint, model_path=args.model, providers=args.providers
+        endpoint=args.endpoint,
+        model_path=args.model,
+        providers=args.providers,
+        models_dir=args.models_dir,
     )
 
     try:
