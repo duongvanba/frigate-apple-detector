@@ -7,7 +7,7 @@
 1. Tải file `FrigateDetector.app.zip` trong mục GitHub Releases.
 2. Giải nén file zip.
 3. Mở `FrigateDetector.app`.
-   - Nếu macOS chặn lần đầu, bấm chuột phải vào app rồi chọn `Open`.
+   - Nếu macOS chặn lần đầu, xem phần **Mở app khi macOS chặn** bên dưới.
 4. Trong app:
    - `Model`: mặc định dùng model `yolov8n.onnx` được đóng gói sẵn trong app.
    - `Host`: dùng `*` để cho phép Frigate kết nối từ máy/container khác.
@@ -24,6 +24,25 @@ detectors:
 ```
 
 Thay `192.168.2.2` bằng IP LAN của máy Mac đang chạy app.
+
+## Mở app khi macOS chặn
+
+App release hiện tại chưa được notarize chính thức qua Apple, nên macOS có thể chặn lần mở đầu tiên với thông báo kiểu:
+
+```text
+"FrigateDetector" đã bị chặn để bảo vệ máy Mac của bạn.
+```
+
+Nếu gặp trường hợp này:
+
+1. Mở `System Settings`.
+2. Vào `Quyền riêng tư & Bảo mật` (`Privacy & Security`).
+3. Kéo xuống phần `Bảo mật` (`Security`).
+4. Ở dòng macOS báo `FrigateDetector` bị chặn, bấm `Vẫn mở` (`Open Anyway`).
+5. Xác nhận lại nếu macOS hỏi thêm.
+6. Mở lại `FrigateDetector.app`.
+
+Bạn nên tự đọc code, tự kiểm tra release và tự chịu trách nhiệm khi chạy app trên máy của mình. App cần mở endpoint TCP để Frigate kết nối, vì vậy hãy kiểm tra firewall, mạng nội bộ và quyền truy cập trước khi dùng lâu dài.
 
 ## App lưu dữ liệu ở đâu?
 
