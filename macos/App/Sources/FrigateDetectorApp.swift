@@ -469,7 +469,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let defaults = UserDefaults.standard
         hostField.stringValue = defaults.string(forKey: "host") ?? "*"
         portField.stringValue = defaults.string(forKey: "port") ?? "5555"
-        modelField.stringValue = defaults.string(forKey: "model") ?? bundledModelURL?.path ?? "AUTO"
+        let savedModel = defaults.string(forKey: "model")
+        if let bundledModelURL {
+            if let savedModel, savedModel != "AUTO", FileManager.default.fileExists(atPath: savedModel) {
+                modelField.stringValue = savedModel
+            } else {
+                modelField.stringValue = bundledModelURL.path
+            }
+        } else {
+            modelField.stringValue = savedModel ?? "AUTO"
+        }
         autoModelButton.state = modelField.stringValue == "AUTO" ? .on : .off
     }
 
